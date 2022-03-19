@@ -11,6 +11,8 @@ export default class Player extends Physics.Arcade.Sprite
 
         this.body.allowGravity = false;
         this.keys = this.scene.input.keyboard.createCursorKeys();
+
+        this.coolDown = 50;
     }
 
     update(time,delta)
@@ -23,8 +25,13 @@ export default class Player extends Physics.Arcade.Sprite
             this.setVelocityX(0);
         }
 
-        if(this.keys.space.isDown) {
+        if(this.keys.space.isDown && this.coolDown === 50) {
+            this.coolDown = 0;
             this.scene.addPlayerShootingPhysics(new PlayerShoot(this.scene, this.x, this.y));
+        }
+
+        if (this.coolDown < 50) {
+            this.coolDown++;
         }
     }
 

@@ -74,6 +74,9 @@ export class Level1 extends Scene {
                 this.enemies[index].update(time,delta);
             }
         }
+        if (this.enemies.length === 0) {
+            this.scene.start("Win");
+        }
     }
 
     gameOver() {
