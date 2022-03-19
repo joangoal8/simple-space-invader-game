@@ -1,42 +1,25 @@
+import {Scene} from 'phaser'
+import Player from '../Player'
+import Enemy from "../Enemy";
 
-export class Level1 extends Phaser.Scene {
+export class Level1 extends Scene {
 
     constructor() {
-        super({key: 'level1'});
+        super('Level1');
     }
 
     preload() {
         this.load.image('background', 'images/background.png');
-        this.load.image('gameOver', 'images/game-over.png');
-        this.load.image('platform', 'images/cloud-platform.png');
-        this.load.image('ball', 'images/ball.png');
+        this.load.image('spaceship','images/spaceship.png');
+        this.load.image('green_enemy','images/green_enemy.png');
+        this.load.image('green_ball','images/green_ball.png');
+        this.load.image('ball','images/ball.png');
     }
 
     create() {
-        this.physics.world.setBoundsCollision(true, true, true, false);
+        this.physics.world.setBoundsCollision(true, true, false, false);
 
         this.add.image(400, 250, 'background');
-
-        this.gameOver = this.add.image(400,191, 'gameOver');
-        this.gameOver.visible = false;
-
-        this.platform = this.physics.add.image(400, 460, 'platform').setImmovable();
-        this.platform.body.allowGravity = false;
-        this.platform.setCollideWorldBounds(true);
-
-        this.ball = this.physics.add.image(400, 30, 'ball');
-        this.ball.setCollideWorldBounds(true);
-
-        let velocity = 100 * Phaser.Math.Between(1.2, 2);
-        if (Phaser.Math.Between(0, 10) > 5) {
-            velocity = 0 - velocity;
-        }
-        this.ball.setVelocity(velocity, 10);
-        this.ball.setBounce(1.02);
-
-        this.physics.add.collider(this.platform, this.ball);
-
-        this.cursors = this.input.keyboard.createCursorKeys();
 
         this.score = 0;
 
@@ -45,47 +28,56 @@ export class Level1 extends Phaser.Scene {
         this.scoreText.setShadow(2, 2, "#333333", 2, true, true);
         this.scoreText.depth=99;
 
-        this.triggerTimer = this.time.addEvent({
-            callback: this.timerEvent,
-            callbackScope: this,
-            delay: 100, // 1000 = 1 second
-            loop: true
-        });
+        this.player = new Player(this,400,400, 'spaceship');
+
+        this.player.setCollideWorldBounds(true);
+
+        this.enemies = [];
+
+        let columns = Phaser.Math.Between(4, 6);
+        let rows = Phaser.Math.Between(2, 3);
+        for(let i = 0; i < columns; i++) {
+            for (let j = 0; j < rows; j++) {
+                let type = (Phaser.Math.Between(1, 2) === 1) ? 'enemy' : 'green_enemy';
+                let enemy = new Enemy(this, 100 * (i+1), 75 * (j+1), 100, 1000, 50, type);
+                this.physics.add.overlap(this.player, enemy, this.player.death,null,this);
+                enemy.setCollideWorldBounds(true);
+                this.enemies.push(enemy);
+            }
+        }
+        
     }
 
     update (time, delta)
     {
-        if (this.cursors.left.isDown) {
-            this.platform.setVelocityX(-400);
-        } else if (this.cursors.right.isDown) {
-            this.platform.setVelocityX(400);
-        } else {
-            this.platform.setVelocityX(0);
-        }
-
-        if (this.ball.y > 500) {
-            this.gameOverMenu()
-        }
-
+        this.player.update(time,delta);
+        this.updateEnemies(time, delta);
     }
 
-    timerEvent() {
-        if (this.ball.y < 500) {
-            this.score += 1;
-            this.scoreText.setText('POINTS: ' + this.score);
+    addPlayerShootingPhysics(playerShoot) {
+        for(let index = 0; index < this.enemies.length; index++) {
+            this.physics.add.overlap(playerShoot, this.enemies[index], this.enemies[index].isHit, null, this);
         }
     }
 
-    gameOverMenu() {
-        this.gameOver.visible = true;
-        this.reload_button = this.add.text(300, 321, 'Restart', {
-            fontSize: '48px',
-            fill: '#000',
-            fontFamily: 'verdana, arial, sans-serif'
-        }).setScrollFactor(0);
+    addEnemyShootingPhysics(enemyShoot) {
+        this.physics.add.overlap(this.player, enemyShoot, this.player.death, null, this);
+    }
 
-        this.reload_button.setInteractive()
-            .on('pointerdown', () => this.restartScene());
+    updateEnemies(time, delta) {
+        for(let index = 0; index < this.enemies.length; index++) {
+            if (this.enemies[index].isDeath()) {
+                this.score += this.enemies[index].getEnemyPoints();
+                this.scoreText.text = 'POINTS: ' + this.score;
+                this.enemies.splice(index, 1);
+            } else {
+                this.enemies[index].update(time,delta);
+            }
+        }
+    }
+
+    gameOver() {
+        this.scene.start("GameOver");
     }
 
     restartScene() {
